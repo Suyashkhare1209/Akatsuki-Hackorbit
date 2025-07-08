@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fire Spread Sim</title>
+    <meta charset="utf-8" />
+    <style>
+      #map {
+        height: 90vh;
+        width: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: sans-serif;
+      }
+      #controls {
+        padding: 10px;
+        background: white;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  </head>
+  <body>
+    <div id="controls">
+      <p><b>Fire Spread Simulator</b></p>
+      <label for="hourSelect">Spread Duration:</label>
+      <select id="hourSelect">
+        <option value="1">1 Hour</option>
+        <option value="3">3 Hours</option>
+        <option value="6">6 Hours</option>
+        <option value="12">12 Hours</option>
+      </select>
+      <br /><br />
+      <button id="simulateBtn">Simulate</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+      const map = L.map("map").setView([30.3, 79], 8);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+      }).addTo(map);
+
+      let ignitionPoint = null;
+      let fireOverlay = null;
+
+      map.on("click", function (e) {
+        ignitionPoint = e.latlng;
+        L.marker(ignitionPoint)
+          .addTo(map)
+          .bindPopup("Ignition Point")
+          .openPopup();
+        map.setView(ignitionPoint, 11);
+      });
+
+      document
+        .getElementById("simulateBtn")
+        .addEventListener("click", async function () {
+          if (!ignitionPoint) {
+            alert("Please click on the map to select an ignition point first.");
+            return;
+          }
+
+          const hours = document.getElementById("hourSelect").value;
+
+          const response = await fetch("http://127.0.0.1:5000/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lat: ignitionPoint.lat,
+              lon: ignitionPoint.lng,
+              hours: hours,
+            }),
+          });
+
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+
+          if (fireOverlay) map.removeLayer(fireOverlay);
+
+          fireOverlay = L.imageOverlay(url, map.getBounds(), {
+            opacity: 0.4,
+          }).addTo(map);
+        });
+    </script>
+  </body>
+</html>
