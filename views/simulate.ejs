@@ -1,0 +1,86 @@
+<% layout("/layout") -%>
+
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">Simulate Fire Spread</h1>
+        <p class="page-subtitle">Visualize how fires spread over time across different terrains</p>
+    </div>
+</div>
+
+<section class="simulation-section">
+    <div class="container">
+        <div class="simulation-controls">
+            <form class="simulation-form" id="simulation-form" action="/simulate" method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sim-region" class="form-label">Region</label>
+                        <select id="sim-region" name="region" class="form-select" required>
+                            <option value="">Choose a region...</option>
+                            <option value="uttarakhand">Uttarakhand</option>
+                            <option value="himachal-pradesh">Himachal Pradesh</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ignition-point" class="form-label">Ignition Point</label>
+                        <input type="text" id="ignition-point" name="ignitionPoint" class="form-input" placeholder="Click on map or enter coordinates" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Simulate Spread</button>
+            </form>
+        </div>
+        
+        <% if (typeof simulation !== 'undefined' && simulation) { %>
+        <div class="simulation-results">
+            <div class="simulation-viewer">
+                <div class="map-display">
+                    <img id="simulation-map" src="/placeholder.svg?height=500&width=800" alt="Fire Spread Simulation" class="simulation-map">
+                    <div class="time-indicator">
+                        <span id="current-time">1 Hour</span>
+                    </div>
+                </div>
+                
+                <div class="timeline-controls">
+                    <div class="timeline-header">
+                        <h3>Fire Spread Timeline</h3>
+                        <div class="playback-controls">
+                            <button id="play-btn" class="control-btn">▶️</button>
+                            <button id="pause-btn" class="control-btn">⏸️</button>
+                            <button id="reset-btn" class="control-btn">⏮️</button>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-slider">
+                        <input type="range" id="time-slider" min="0" max="5" value="0" step="1" class="slider">
+                        <div class="timeline-labels">
+                            <span data-time="0">1h</span>
+                            <span data-time="1">2h</span>
+                            <span data-time="2">3h</span>
+                            <span data-time="3">6h</span>
+                            <span data-time="4">12h</span>
+                            <span data-time="5">24h</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="simulation-info">
+                <h4>Simulation Details</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Total Area Affected:</span>
+                        <span class="info-value">2,450 hectares</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Peak Spread Rate:</span>
+                        <span class="info-value">15 km/h</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Wind Direction:</span>
+                        <span class="info-value">Northeast</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</section>

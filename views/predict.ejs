@@ -1,0 +1,67 @@
+<% layout("/layout") -%>
+
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">Predict Fire Risk</h1>
+        <p class="page-subtitle">Select a region and date to generate fire risk predictions</p>
+    </div>
+</div>
+
+<section class="prediction-section">
+    <div class="container">
+        <div class="prediction-form-container">
+            <form class="prediction-form" id="prediction-form" action="/predict" method="POST">
+                <div class="form-group">
+                    <label for="region" class="form-label">Select Region</label>
+                    <select id="region" name="region" class="form-select" required>
+                        <option value="">Choose a region...</option>
+                        <option value="uttarakhand">Uttarakhand</option>
+                        <option value="himachal-pradesh">Himachal Pradesh</option>
+                        <option value="jammu-kashmir">Jammu & Kashmir</option>
+                        <option value="arunachal-pradesh">Arunachal Pradesh</option>
+                        <option value="meghalaya">Meghalaya</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date" class="form-label">Prediction Date</label>
+                    <input type="date" id="date" name="date" class="form-input" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full">Predict Fire Risk</button>
+            </form>
+        </div>
+        
+        <% if (typeof prediction !== 'undefined' && prediction) { %>
+        <div class="prediction-results">
+            <h2 class="results-title">Fire Risk Prediction Results</h2>
+            <div class="map-container">
+                <img src="/placeholder.svg?height=500&width=800" alt="Fire Risk Prediction Map" class="prediction-map">
+                <div class="map-legend">
+                    <h4>Risk Levels</h4>
+                    <div class="legend-item">
+                        <span class="legend-color low"></span>
+                        <span>Low Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color moderate"></span>
+                        <span>Moderate Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color high"></span>
+                        <span>High Risk</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color extreme"></span>
+                        <span>Extreme Risk</span>
+                    </div>
+                </div>
+            </div>
+            <div class="results-actions">
+                <a href="/download/prediction/<%= prediction.id %>" class="btn btn-secondary">Download Map</a>
+                <button onclick="window.print()" class="btn btn-outline">Print Results</button>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</section>

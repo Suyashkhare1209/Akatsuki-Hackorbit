@@ -1,0 +1,66 @@
+<% layout("/layout") -%>
+
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">Download Maps</h1>
+        <p class="page-subtitle">Access and download prediction and simulation maps</p>
+    </div>
+</div>
+
+<section class="download-section">
+    <div class="container">
+        <div class="download-filters">
+            <div class="filter-group">
+                <label for="map-type" class="filter-label">Map Type</label>
+                <select id="map-type" class="filter-select">
+                    <option value="all">All Maps</option>
+                    <option value="prediction">Prediction Maps</option>
+                    <option value="simulation">Simulation Maps</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="region-filter" class="filter-label">Region</label>
+                <select id="region-filter" class="filter-select">
+                    <option value="all">All Regions</option>
+                    <option value="uttarakhand">Uttarakhand</option>
+                    <option value="himachal-pradesh">Himachal Pradesh</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="maps-grid">
+            <% if (typeof maps !== 'undefined' && maps.length > 0) { %>
+                <% maps.forEach(function(map) { %>
+                <div class="map-card">
+                    <div class="map-thumbnail">
+                        <img src="/placeholder.svg?height=200&width=300" alt="<%= map.title %>" class="thumbnail-img">
+                        <div class="map-type-badge <%= map.type %>"><%= map.type %></div>
+                    </div>
+                    <div class="map-info">
+                        <h3 class="map-title"><%= map.title %></h3>
+                        <p class="map-details">
+                            <span class="detail-item">📍 <%= map.region %></span>
+                            <span class="detail-item">📅 <%= map.date %></span>
+                        </p>
+                        <p class="map-description"><%= map.description %></p>
+                        <div class="map-actions">
+                            <a href="/download/<%= map.id %>" class="btn btn-primary btn-sm">Download PNG</a>
+                            <a href="/download/<%= map.id %>?format=pdf" class="btn btn-outline btn-sm">Download PDF</a>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <div class="empty-state">
+                    <div class="empty-icon">📁</div>
+                    <h3>No Maps Available</h3>
+                    <p>Generate some predictions or simulations to see downloadable maps here.</p>
+                    <div class="empty-actions">
+                        <a href="/predict" class="btn btn-primary">Create Prediction</a>
+                        <a href="/simulate" class="btn btn-secondary">Run Simulation</a>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</section>
