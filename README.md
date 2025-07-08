@@ -4,8 +4,12 @@ node module with basic frontend done
 
 
 COMMIT2
-No Update reserach on getting terrain rasters to simulate fire spread
+No Code Update, reserach on getting terrain rasters to simulate fire spread
 
 
 COMMIT 3 16:01
 Created a dataset from scratch using GEEE showcasing various features corresponding to fire points and trained a basic ml model on it 
+
+
+COMMIT 4 18:02
+Working on the simulate logic with the help of terrain rasters downloaded at the the of COMMIT 2.
