@@ -13,3 +13,6 @@ Created a dataset from scratch using GEEE showcasing various features correspond
 
 COMMIT 4 18:02
 Working on the simulate logic with the help of terrain rasters downloaded at the the of COMMIT 2.
+
+COMMIT 5 19:57
+We are still working on the simulation logic
