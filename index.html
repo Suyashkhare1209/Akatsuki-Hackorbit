@@ -91,6 +91,29 @@
       let isSimulating = false;
       let interval = null;
 
+      // 🔥 Get ignition point from URL if available and auto-start simulation
+      const params = new URLSearchParams(window.location.search);
+      const latParam = parseFloat(params.get("lat"));
+      const lonParam = parseFloat(params.get("lon"));
+
+      if (!isNaN(latParam) && !isNaN(lonParam)) {
+        ignitionPoint = L.latLng(latParam, lonParam);
+        currentHour = 0;
+        burnedSet.clear();
+        updateStats(0, 0);
+
+        if (marker) map.removeLayer(marker);
+
+        marker = L.marker(ignitionPoint)
+          .addTo(map)
+          .bindPopup("🔥 Ignition Point")
+          .openPopup();
+
+        map.setView(ignitionPoint, 16);
+        startSimulation();
+      }
+
+
       const map = L.map("map").setView([30.5, 78.5], 8);
 
       const satellite = L.tileLayer(
@@ -183,5 +206,34 @@
         ).textContent = `⏱️ Hours Passed: ${hours}`;
       }
     </script>
+
+
+
+    <!-- <script>
+      const latFromFlask = "{{ lat }}";
+      const lonFromFlask = "{{ lon }}";
+
+      if (latFromFlask && lonFromFlask) {
+        ignitionPoint = { lat: parseFloat(latFromFlask), lng: parseFloat(lonFromFlask) };
+        currentHour = 0;
+        burnedSet.clear();
+        updateStats(0, 0);
+
+        if (marker) map.removeLayer(marker);
+
+        marker = L.marker(ignitionPoint)
+          .addTo(map)
+          .bindPopup("🔥 Ignition Point")
+          .openPopup();
+
+        map.flyTo(ignitionPoint, 16, {
+          animate: true,
+          duration: 1.5,
+        });
+
+        startSimulation(); // 🔥 auto-start
+      }
+    </script> -->
+
   </body>
 </html>

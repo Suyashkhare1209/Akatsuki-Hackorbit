@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import rasterio
 from rasterio.transform import rowcol
@@ -6,13 +6,24 @@ from pyproj import Transformer
 from collections import deque
 import traceback
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 CORS(app)
 
 # Load raster datasets
-landcover_dataset = rasterio.open('data/landcover.tif')
-elevation_dataset = rasterio.open('data/elevation.tif')
+# landcover_dataset = rasterio.open('data/landcover.tif')
+# elevation_dataset = rasterio.open('data/elevation.tif')
+
+def load_raster(path):
+    return rasterio.open(path)
+
+with ThreadPoolExecutor() as executor:
+    future1 = executor.submit(load_raster, 'data/landcover.tif')
+    future2 = executor.submit(load_raster, 'data/elevation.tif')
+
+    landcover_dataset = future1.result()
+    elevation_dataset = future2.result()
 
 # Coordinate transformers
 lc_transformer = Transformer.from_crs("EPSG:4326", landcover_dataset.crs, always_xy=True)
@@ -24,6 +35,12 @@ BURNABLE_CODES = {0, 10, 20, 30, 40}
 # Load arrays
 landcover_array = landcover_dataset.read(1)
 elevation_array = elevation_dataset.read(1)
+
+@app.route('/')
+def show_simulation_ui():
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    return render_template('index.html', lat=lat, lon=lon)
 
 @app.route('/simulate', methods=['POST'])
 def simulate():
@@ -123,6 +140,8 @@ def simulate():
         print("❌ Error:", str(e))
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+    
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
