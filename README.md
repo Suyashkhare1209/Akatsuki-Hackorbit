@@ -16,3 +16,7 @@ Working on the simulate logic with the help of terrain rasters downloaded at the
 
 COMMIT 5 19:57
 We are still working on the simulation logic
+
+
+COMMIT 6 14:10 DAY 2
+Simulation code completed with frontend and backend 
