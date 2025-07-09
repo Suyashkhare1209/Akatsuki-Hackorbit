@@ -21,15 +21,13 @@ We are still working on the simulation logic
 COMMIT 6 14:10 DAY 2
 Simulation code completed with frontend and backend 
 
-COMMIT 7 
-Finalized the UI and functionality and doing the final checks ,commiting a few of the theme template we used and the frontend files (with UI integration left)
-
-
-
 
 COMMIT 7 15:43 DAY 2
 No prominent code update , working on combining the predict and simulation pages
 
 COMMIT 8 : 18:18 
 Working on integrating everything 
+
+COMMIT 9
+Finalized the UI and functionality and doing the final checks ,commiting a few of the theme template we used and the frontend files (few lines of UI integration left)
 
