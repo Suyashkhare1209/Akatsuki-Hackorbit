@@ -20,3 +20,7 @@ We are still working on the simulation logic
 
 COMMIT 6 14:10 DAY 2
 Simulation code completed with frontend and backend 
+
+
+COMMIT 7 15:43 DAY 2
+No prominent code update , working on combining the predict and simulation pages
