@@ -22,7 +22,8 @@ COMMIT 6 14:10 DAY 2
 Simulation code completed with frontend and backend 
 
 COMMIT 7 
-Finalized the UI and functionality and doing the final checks ,commiting a few of the theme template we used 
+Finalized the UI and functionality and doing the final checks ,commiting a few of the theme template we used and the frontend files (with UI integration left)
+
 
 
 
