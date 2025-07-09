@@ -20,7 +20,7 @@ app.add_middleware(
 
 # Try to load model if available
 try:
-    with open(r"C:\Users\suyas\OneDrive\Documents\simulation\forest-fire-main\py_files\best_random_forest_model.pkl", "rb") as f:
+    with open(r"D:\codes\hackathon\hackorbit\py_files\best_random_forest_model.pkl", "rb") as f:
         model = joblib.load(f)
         print("model succ loaded")
 except:
@@ -46,7 +46,6 @@ class FireTile(BaseModel):
 class FireMapResponse(BaseModel):
     results: List[FireTile]
 # python -m uvicorn firepredict:app --reload
-# python -m uvicorn firepredict:app --host 0.0.0.0 --port 8000 --reload
 
 # ========== Endpoint ==========
 @app.post("/predict_fire_map", response_model=FireMapResponse)
@@ -61,7 +60,7 @@ def predict_point(req: PointRequest):
     # Load extracted environmental features from CSV
     import pandas as pd
     try:
-        df = pd.read_csv(r"C:\Users\suyas\OneDrive\Documents\simulation\forest-fire-main\point_data_output.csv")
+        df = pd.read_csv("point_data_output.csv")
     except:
         return {"error": "CSV file with environmental data not found."}
 
@@ -70,8 +69,7 @@ def predict_point(req: PointRequest):
         "elevation", "lat", "lon", "ndvi", "lst", "slope", "aspect",
         "land_cover_type", "month", "relative_humidity", "wind_speed"
     ]
-
-    print(df)
+    
     if model is not None:
         proba = model.predict_proba(df[feature_order])[0][1]
     else:
