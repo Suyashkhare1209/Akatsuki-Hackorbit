@@ -1,80 +1,128 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import numpy as np
 import rasterio
-import tempfile
-import os
+from rasterio.transform import rowcol
+from pyproj import Transformer
+from collections import deque
+import traceback
+import random
 
 app = Flask(__name__)
 CORS(app)
 
-# Load elevation and landcover TIFFs once
-elevation_path = "elevation.tif"
-landcover_path = "landcover.tif"
+# Load raster datasets
+landcover_dataset = rasterio.open('data/landcover.tif')
+elevation_dataset = rasterio.open('data/elevation.tif')
 
-with rasterio.open(elevation_path) as elev_src:
-    elevation = elev_src.read(1)
-    elev_transform = elev_src.transform
-    elev_crs = elev_src.crs
+# Coordinate transformers
+lc_transformer = Transformer.from_crs("EPSG:4326", landcover_dataset.crs, always_xy=True)
+el_transformer = Transformer.from_crs("EPSG:4326", elevation_dataset.crs, always_xy=True)
 
-with rasterio.open(landcover_path) as land_src:
-    landcover = land_src.read(1)
+# Constants
+BURNABLE_CODES = {0, 10, 20, 30, 40}
 
-# Helper to compute bounds from transform
-def get_bounds(transform, width, height):
-    west, north = transform * (0, 0)
-    east, south = transform * (width, height)
-    return [[south, west], [north, east]]  # [[southWest], [northEast]]
+# Load arrays
+landcover_array = landcover_dataset.read(1)
+elevation_array = elevation_dataset.read(1)
 
 @app.route('/simulate', methods=['POST'])
-def simulate_fire():
-    data = request.json
-    lat = data['lat']
-    lon = data['lon']
-    hours = int(data['hours'])
+def simulate():
+    data = request.get_json()
+    lat = float(data.get('lat'))
+    lon = float(data.get('lon'))
+    hours = int(data.get('hours'))
 
-    print(f"🔥 Simulating fire at lat={lat}, lon={lon}, for {hours} hours")
+    try:
+        print("📥 Incoming request data:", data)
 
-    # Get pixel position
-    row, col = rasterio.transform.rowcol(elev_transform, lon, lat)
+        visited = set()
+        queue = deque()
+        burned_pixels = []
 
-    # Dummy spread radius logic
-    radius = hours * 3  # You can make this smarter later
+        start = (lat, lon)
+        queue.append((start, 0))
+        visited.add(start)
 
-    # Create fire spread mask
-    fire_mask = np.zeros_like(elevation, dtype=np.uint8)
-    for r in range(fire_mask.shape[0]):
-        for c in range(fire_mask.shape[1]):
-            if (r - row) ** 2 + (c - col) ** 2 <= radius ** 2:
-                fire_mask[r, c] = 1
+        lat_step = 0.0003  # approx 30m
+        lon_step = 0.0003
 
-    # Save the result to temporary GeoTIFF
-    tmp_path = tempfile.mktemp(suffix=".tif")
-    with rasterio.open(
-        tmp_path, 'w',
-        driver='GTiff',
-        height=fire_mask.shape[0],
-        width=fire_mask.shape[1],
-        count=1,
-        dtype=rasterio.uint8,
-        crs=elev_crs,
-        transform=elev_transform
-    ) as dst:
-        dst.write(fire_mask, 1)
+        while queue:
+            (cur_lat, cur_lon), hour = queue.popleft()
 
-    bounds = get_bounds(elev_transform, fire_mask.shape[1], fire_mask.shape[0])
+            if hour > hours:
+                continue
 
-    return jsonify({
-        "image_url": f"/get_fire_mask?path={tmp_path}",
-        "bounds": bounds
-    })
+            burned_pixels.append([cur_lat, cur_lon])
 
-@app.route('/get_fire_mask')
-def get_fire_mask():
-    path = request.args.get("path")
-    if not os.path.exists(path):
-        return "Not Found", 404
-    return send_file(path, mimetype='image/tiff')
+            # Convert current (lat, lon) to both raster pixel locations
+            x_lc, y_lc = lc_transformer.transform(cur_lon, cur_lat)
+            row_lc, col_lc = rowcol(landcover_dataset.transform, x_lc, y_lc)
+
+            x_el, y_el = el_transformer.transform(cur_lon, cur_lat)
+            row_el, col_el = rowcol(elevation_dataset.transform, x_el, y_el)
+
+            # Check bounds
+            if not (0 <= row_lc < landcover_array.shape[0] and 0 <= col_lc < landcover_array.shape[1]):
+                continue
+            if not (0 <= row_el < elevation_array.shape[0] and 0 <= col_el < elevation_array.shape[1]):
+                continue
+
+            landcover_value = landcover_array[row_lc, col_lc]
+            current_elevation = elevation_array[row_el, col_el]
+
+            # Generate neighbors
+            neighbors = []
+            for dlat in [-lat_step, 0, lat_step]:
+                for dlon in [-lon_step, 0, lon_step]:
+                    if dlat == 0 and dlon == 0:
+                        continue
+                    nlat = cur_lat + dlat
+                    nlon = cur_lon + dlon
+                    neighbors.append((nlat, nlon))
+
+            random.shuffle(neighbors)
+
+            for nlat, nlon in neighbors:
+                if (nlat, nlon) in visited:
+                    continue
+
+                x_lc_n, y_lc_n = lc_transformer.transform(nlon, nlat)
+                r_lc_n, c_lc_n = rowcol(landcover_dataset.transform, x_lc_n, y_lc_n)
+
+                x_el_n, y_el_n = el_transformer.transform(nlon, nlat)
+                r_el_n, c_el_n = rowcol(elevation_dataset.transform, x_el_n, y_el_n)
+
+                if not (0 <= r_lc_n < landcover_array.shape[0] and 0 <= c_lc_n < landcover_array.shape[1]):
+                    continue
+                if not (0 <= r_el_n < elevation_array.shape[0] and 0 <= c_el_n < elevation_array.shape[1]):
+                    continue
+
+                neighbor_lc = landcover_array[r_lc_n, c_lc_n]
+                neighbor_el = elevation_array[r_el_n, c_el_n]
+
+                if neighbor_lc in BURNABLE_CODES:
+                    elevation_diff = neighbor_el - current_elevation
+                    spread_chance = 0.45 + (elevation_diff * 0.0005)
+                    spread_chance = max(0.05, min(spread_chance, 0.9))
+
+                    if random.random() < spread_chance:
+                        visited.add((nlat, nlon))
+                        queue.append(((nlat, nlon), hour + 1))
+
+            if len(burned_pixels) % 500 == 0:
+                print(f"🔥 Burned so far: {len(burned_pixels)}")
+
+        print(f"✅ Total burned: {len(burned_pixels)}")
+        return jsonify({
+            "burned_pixels": burned_pixels,
+            "total_burned": len(burned_pixels),
+            "hours_passed": hours
+        })
+
+    except Exception as e:
+        print("❌ Error:", str(e))
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

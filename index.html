@@ -1,97 +1,187 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Fire Spread Sim</title>
-    <meta charset="utf-8" />
-    <style>
-      #map {
-        height: 90vh;
-        width: 100%;
-      }
-      body {
-        margin: 0;
-        font-family: sans-serif;
-      }
-      #controls {
-        padding: 10px;
-        background: white;
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1000;
-        border-radius: 5px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <title>🔥 Wildfire Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background-color: #121212;
+        color: #ffffff;
+      }
+
+      .title {
+        text-align: center;
+        font-size: 28px;
+        padding: 15px;
+        background: #1f1f1f;
+        border-bottom: 2px solid #333;
+      }
+
+      #map {
+        height: 80vh;
+        width: 100%;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px;
+        background: #1e1e1e;
+        border-top: 2px solid #333;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        background-color: #ff5722;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+
+      .btn:hover {
+        background-color: #e64a19;
+      }
+
+      .stats {
+        display: flex;
+        justify-content: space-around;
+        padding: 12px;
+        background-color: #1f1f1f;
+        border-top: 2px solid #333;
+        font-size: 18px;
+      }
+
+      .stats div {
+        background: #2a2a2a;
+        padding: 10px 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 5px #000;
+      }
+    </style>
   </head>
   <body>
-    <div id="controls">
-      <p><b>Fire Spread Simulator</b></p>
-      <label for="hourSelect">Spread Duration:</label>
-      <select id="hourSelect">
-        <option value="1">1 Hour</option>
-        <option value="3">3 Hours</option>
-        <option value="6">6 Hours</option>
-        <option value="12">12 Hours</option>
-      </select>
-      <br /><br />
-      <button id="simulateBtn">Simulate</button>
+    <div class="title">🔥 Wildfire Simulation Interface</div>
+    <div id="map"></div>
+    <div class="stats">
+      <div id="areaBurned">🧱 Area Burned: 0 km²</div>
+      <div id="hoursPassed">⏱️ Hours Passed: 0</div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="startSimulation()">Simulate</button>
+      <button class="btn" onclick="stopSimulation()">Stop</button>
     </div>
 
-    <div id="map"></div>
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const map = L.map("map").setView([30.3, 79], 8);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-      }).addTo(map);
-
       let ignitionPoint = null;
-      let fireOverlay = null;
+      let marker = null;
+      let burnedSet = new Set();
+      let currentHour = 0;
+      let isSimulating = false;
+      let interval = null;
+
+      const map = L.map("map").setView([30.5, 78.5], 8);
+
+      const satellite = L.tileLayer(
+        "https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        {
+          maxZoom: 20,
+          subdomains: ["mt0", "mt1", "mt2", "mt3"],
+        }
+      ).addTo(map);
 
       map.on("click", function (e) {
         ignitionPoint = e.latlng;
-        L.marker(ignitionPoint)
+        currentHour = 0;
+        burnedSet.clear();
+        updateStats(0, 0);
+
+        if (marker) map.removeLayer(marker);
+
+        marker = L.marker(ignitionPoint)
           .addTo(map)
-          .bindPopup("Ignition Point")
+          .bindPopup("🔥 Ignition Point")
           .openPopup();
-        map.setView(ignitionPoint, 11);
+
+        map.flyTo(ignitionPoint, 16, {
+          animate: true,
+          duration: 1.5,
+        });
       });
 
-      document
-        .getElementById("simulateBtn")
-        .addEventListener("click", async function () {
-          if (!ignitionPoint) {
-            alert("Please click on the map to select an ignition point first.");
-            return;
-          }
+      function drawBurnedPixel(lat, lon) {
+        const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+        if (burnedSet.has(key)) return;
+        burnedSet.add(key);
 
-          const hours = document.getElementById("hourSelect").value;
+        const circle = L.circleMarker([lat, lon], {
+          radius: 6,
+          color: "#ff3c00",
+          fillColor: "#ff1100",
+          fillOpacity: 0.85,
+          weight: 1,
+        }).addTo(map);
+      }
 
-          const response = await fetch("http://127.0.0.1:5000/simulate", {
+      async function simulateStep() {
+        if (!isSimulating || !ignitionPoint) return;
+
+        try {
+          const res = await fetch("http://127.0.0.1:5000/simulate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               lat: ignitionPoint.lat,
               lon: ignitionPoint.lng,
-              hours: hours,
+              hours: currentHour + 1,
             }),
           });
 
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
+          const data = await res.json();
 
-          if (fireOverlay) map.removeLayer(fireOverlay);
+          data.burned_pixels.forEach(([lat, lon]) => {
+            drawBurnedPixel(lat, lon);
+          });
 
-          fireOverlay = L.imageOverlay(url, map.getBounds(), {
-            opacity: 0.4,
-          }).addTo(map);
-        });
+          updateStats(data.total_burned, data.hours_passed);
+          currentHour += 1;
+        } catch (err) {
+          console.error("🔥 Simulation failed", err);
+          stopSimulation();
+        }
+      }
+
+      function startSimulation() {
+        if (!ignitionPoint || isSimulating) return;
+        isSimulating = true;
+        interval = setInterval(simulateStep, 1000);
+      }
+
+      function stopSimulation() {
+        isSimulating = false;
+        clearInterval(interval);
+      }
+
+      function updateStats(pixels, hours) {
+        const area = (pixels * 100) / 10000000; // each pixel is 100 m²
+        document.getElementById(
+          "areaBurned"
+        ).textContent = `🧱 Area Burned: ${area.toLocaleString()} km²`;
+        document.getElementById(
+          "hoursPassed"
+        ).textContent = `⏱️ Hours Passed: ${hours}`;
+      }
     </script>
   </body>
 </html>
